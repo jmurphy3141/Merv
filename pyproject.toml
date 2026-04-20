@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "merv"
+version = "0.1.0"
+description = "Jarvis-like Personal AI Companion — Phase 0"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "langgraph>=0.2.0",
+    "langchain>=0.3.0",
+    "langchain-anthropic>=0.3.0",
+    "langchain-community>=0.3.0",
+    "python-telegram-bot>=21.0",
+    "anthropic>=0.40.0",
+    "google-api-python-client>=2.100.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-auth-oauthlib>=1.2.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "aiohttp>=3.9.0",
+    "httpx>=0.27.0",
+    "structlog>=24.0.0",
+    "rich>=13.0.0",
+    "apscheduler>=3.10.0",
+    "pytz>=2024.1",
+    "beautifulsoup4>=4.12.0",
+    "aiofiles>=23.2.1",
+    "tenacity>=8.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-mock>=3.12.0",
+    "pytest-cov>=4.1.0",
+    "respx>=0.21.0",
+    "freezegun>=1.4.0",
+    "factory-boy>=3.3.0",
+]
+
+[project.scripts]
+merv = "merv.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["merv*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+markers = [
+    "unit: fast isolated tests",
+    "integration: tests requiring external services",
+    "slow: tests that take >5s",
+]
+
+[tool.coverage.run]
+source = ["merv"]
+omit = ["tests/*", "merv/cli.py"]
+
+[tool.coverage.report]
+fail_under = 70

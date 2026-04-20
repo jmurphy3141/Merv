@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+
+# Environment / secrets — NEVER commit these
+.env
+.env.local
+*.pem
+*.key
+
+# Google OAuth tokens — contain sensitive credentials
+~/.config/merv/google_token.json
+
+# Merv data dir (memory files)
+~/.config/merv/data/
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+logs/
