@@ -16,11 +16,17 @@ env/
 *.pem
 *.key
 
-# Google OAuth tokens — contain sensitive credentials
-~/.config/merv/google_token.json
+# Google OAuth — credentials file and generated token
+# Store these outside the repo (e.g. ~/.config/merv/) and point to them via .env
+google_credentials.json
+google_token.json
+*credentials*.json
+*token*.json
+service_account*.json
 
-# Merv data dir (memory files)
-~/.config/merv/data/
+# Merv data dir if ever placed inside the repo
+data/
+*.memory.json
 
 # Test artifacts
 .pytest_cache/
