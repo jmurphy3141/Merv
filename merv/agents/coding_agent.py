@@ -4,8 +4,12 @@ The agent uses four tools (write_file, read_file, run_python, run_tests) in a
 ReAct loop: plan → write → run/test → observe errors → fix → repeat.
 
 All file operations are confined to a working directory (default: /tmp/merv_coding/).
-Subprocess calls never use shell=True; path traversal is blocked before subprocess
-is ever reached.
+Every tool checks the PermissionStore before executing; if the required permission
+has not been granted the tool returns a descriptive error so the LLM can surface
+it to the user rather than silently failing.
+
+Subprocess calls never use shell=True; path traversal is blocked before
+subprocess is ever reached.
 """
 
 from __future__ import annotations
@@ -17,6 +21,8 @@ from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 from langgraph.errors import GraphRecursionError
 from langgraph.prebuilt import create_react_agent
+
+from merv.agents.permissions import PERMISSION_INFO, Permission, PermissionStore
 
 _DEFAULT_WORK_DIR = Path("/tmp/merv_coding")
 
@@ -39,6 +45,7 @@ RULES:
 - Keep explanations brief. Focus on the code.
 - If a task is ambiguous, make a reasonable assumption and state it.
 - Maximum 5 attempts to fix errors before explaining what went wrong.
+- If a tool returns a PERMISSION DENIED message, stop and report it to the user.
 
 When complete, summarize:
 - What files were written
@@ -61,8 +68,18 @@ def _resolve_safe(path_str: str, work_dir: Path) -> Path | str:
         return f"Error resolving path: {exc}"
 
 
-def _make_tools(work_dir: Path) -> list:
-    """Build the four coding tools with work_dir captured in their closures."""
+def _permission_denied_msg(perm: Permission) -> str:
+    info = PERMISSION_INFO[perm]
+    return (
+        f"PERMISSION DENIED: {info['label']} ({perm.value})\n"
+        f"Why this permission is needed: {info['reason']}\n"
+        "This permission has not been granted. "
+        "Please inform the user and ask them to grant it."
+    )
+
+
+def _make_tools(work_dir: Path, permission_store: PermissionStore) -> list:
+    """Build the four coding tools with work_dir and permission_store in their closures."""
     work_dir.mkdir(parents=True, exist_ok=True)
 
     @tool
@@ -76,6 +93,9 @@ def _make_tools(work_dir: Path) -> list:
         Returns:
             Confirmation message or an error string.
         """
+        if not permission_store.is_granted(Permission.WRITE_FILES):
+            return _permission_denied_msg(Permission.WRITE_FILES)
+
         resolved = _resolve_safe(path, work_dir)
         if isinstance(resolved, str):
             return resolved
@@ -97,6 +117,9 @@ def _make_tools(work_dir: Path) -> list:
         Returns:
             File contents (truncated at 10,000 chars) or an error string.
         """
+        if not permission_store.is_granted(Permission.READ_FILES):
+            return _permission_denied_msg(Permission.READ_FILES)
+
         resolved = _resolve_safe(path, work_dir)
         if isinstance(resolved, str):
             return resolved
@@ -124,6 +147,9 @@ def _make_tools(work_dir: Path) -> list:
         Returns:
             Combined stdout + stderr (truncated at 5,000 chars) or an error string.
         """
+        if not permission_store.is_granted(Permission.EXECUTE_CODE):
+            return _permission_denied_msg(Permission.EXECUTE_CODE)
+
         resolved = _resolve_safe(script_path, work_dir)
         if isinstance(resolved, str):
             return resolved
@@ -159,6 +185,9 @@ def _make_tools(work_dir: Path) -> list:
         Returns:
             pytest output (truncated at 5,000 chars) or an error string.
         """
+        if not permission_store.is_granted(Permission.RUN_TESTS):
+            return _permission_denied_msg(Permission.RUN_TESTS)
+
         resolved = _resolve_safe(test_path, work_dir)
         if isinstance(resolved, str):
             return resolved
@@ -187,6 +216,7 @@ async def run_coding_task(
     task: str,
     llm,
     work_dir: str | None = None,
+    permission_store: PermissionStore | None = None,
     max_iterations: int = 5,
 ) -> str:
     """Run the ReAct coding agent on a task and return a summary string.
@@ -195,13 +225,16 @@ async def run_coding_task(
         task: Natural language description of the coding task.
         llm: An instantiated LangChain chat model (e.g. ChatAnthropic).
         work_dir: Path to the coding workspace. Defaults to /tmp/merv_coding/.
+        permission_store: Active PermissionStore. Defaults to a new store at the
+            default path — all tools will check permissions before executing.
         max_iterations: Maximum write→run→fix cycles before giving up.
 
     Returns:
         The agent's final summary message.
     """
     work_dir_path = Path(work_dir) if work_dir else _DEFAULT_WORK_DIR
-    tools = _make_tools(work_dir_path)
+    perm_store = permission_store or PermissionStore()
+    tools = _make_tools(work_dir_path, perm_store)
     agent = create_react_agent(llm, tools, prompt=CODING_SYSTEM_PROMPT)
 
     # Each iteration = 1 tool call + 1 observation = 2 graph steps; +1 for final response.
