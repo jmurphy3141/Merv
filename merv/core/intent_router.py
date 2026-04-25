@@ -21,8 +21,12 @@ _PATTERNS: list[tuple[re.Pattern, IntentType]] = [
     (re.compile(r"\b(email|emails|inbox|gmail|mail|message)\b", re.I), IntentType.FAMILY_ASSISTANT),
     # Project management
     (re.compile(r"\b(project|tasks?|todo|deadline|milestone|standup|sprint|backlog)\b", re.I), IntentType.PROJECT_MANAGER),
-    # Engineering
-    (re.compile(r"\b(code|bugs?|refactor|deploy|tests?|build|pr|pull request|commit|debug)\b", re.I), IntentType.ENGINEERING),
+    # Engineering / coding
+    (re.compile(
+        r"\b(code|coding|bugs?|refactor|deploy|tests?|testing|build|pr|pull request|commit|debug"
+        r"|script|function|implement|algorithm|python|pytest|unittest|class|module)\b",
+        re.I,
+    ), IntentType.ENGINEERING),
 ]
 
 

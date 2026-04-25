@@ -141,12 +141,13 @@ async def project_skill_node(state: dict[str, Any]) -> dict[str, Any]:
 
 
 async def engineering_skill_node(state: dict[str, Any]) -> dict[str, Any]:
-    """Phase 2 placeholder."""
+    """Delegates to CodingSkill — ReAct agent that writes, runs, and tests code."""
+    from merv.skills.coding_skill import CodingSkill
+
     merv_state = MervState.from_langgraph_dict(state)
-    merv_state.add_assistant_message(
-        "The engineering team sub-agents are being assembled in Phase 2! Stay tuned. "
-        "What else can I help you with?"
-    )
+    skill = CodingSkill()
+    response = await skill.run(merv_state)
+    merv_state.add_assistant_message(response, metadata={"skill": "coding"})
     merv_state.routed_to = "engineering_skill"
     merv_state.completed = True
     return merv_state.to_langgraph_dict()
